@@ -48,30 +48,47 @@ function normalizeHex(hex: string): string {
  * Recursively coerce every field of a brand output object to its expected type.
  * Returns `null` if the input is clearly not a valid brand output at all.
  */
+const DEFAULT_SWATCHES = [
+  { id: 's0', name: 'Background', hex: '#ffffff', role: 'background' },
+  { id: 's1', name: 'Surface',    hex: '#f5f5f5', role: 'neutral'    },
+  { id: 's2', name: 'Primary',    hex: '#2563eb', role: 'primary'    },
+  { id: 's3', name: 'Accent',     hex: '#7c3aed', role: 'accent'     },
+  { id: 's4', name: 'Text',       hex: '#111111', role: 'text'       },
+];
+
 export function sanitizeOutputs(raw: unknown): BrandOutputs | null {
   if (!raw || typeof raw !== 'object') return null;
-  const r = raw as Record<string, unknown>;
+  let r = raw as Record<string, unknown>;
 
-  // Must have at least the core keys to be worth keeping
-  if (!r.overview && !r.positioning && !r.tone) return null;
+  // Unwrap single-key envelopes: {"brand_package": {...}} → {...}
+  const keys = Object.keys(r);
+  if (keys.length === 1 && r[keys[0]] && typeof r[keys[0]] === 'object') {
+    r = r[keys[0]] as Record<string, unknown>;
+  }
+
+  // Must have at least one recognisable content field
+  if (!r.overview && !r.positioning && !r.tone && !r.titles && !r.palette) return null;
 
   const tone = (r.tone && typeof r.tone === 'object' ? r.tone : {}) as Record<string, unknown>;
   const typo = (r.typography && typeof r.typography === 'object' ? r.typography : {}) as Record<string, unknown>;
   const palette = (r.palette && typeof r.palette === 'object' ? r.palette : {}) as Record<string, unknown>;
 
-  const swatches = Array.isArray(palette.swatches)
-    ? palette.swatches.map((s: unknown, i: number) => {
+  // Accept swatches under palette.swatches or palette.colors
+  const rawSwatches = Array.isArray(palette.swatches) ? palette.swatches
+    : Array.isArray(palette.colors) ? palette.colors
+    : [];
+
+  const swatches = rawSwatches.length
+    ? rawSwatches.map((s: unknown, i: number) => {
         const sw = (s && typeof s === 'object' ? s : {}) as Record<string, unknown>;
         return {
           id:   str(sw.id,   `s${i}`),
           name: str(sw.name, 'Color'),
-          hex:  normalizeHex(str(sw.hex, '#888888')),
-          role: str(sw.role, 'accent'),
+          hex:  normalizeHex(str(sw.hex ?? sw.color ?? sw.value, '#888888')),
+          role: str(sw.role ?? sw.type, 'accent'),
         };
       })
-    : [];
-
-  if (!swatches.length) return null;
+    : DEFAULT_SWATCHES;
 
   const visualDirections = Array.isArray(r.visualDirections)
     ? r.visualDirections.map((v: unknown, i: number) => {

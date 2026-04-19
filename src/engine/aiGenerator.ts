@@ -75,7 +75,10 @@ function buildUserPrompt(inputs: BrandInputs): string {
 
 function validate(raw: unknown): BrandOutputs {
   const result = sanitizeOutputs(raw);
-  if (!result) throw new Error('Response is not a valid brand output object');
+  if (!result) {
+    const preview = JSON.stringify(raw)?.slice(0, 300) ?? '(unparseable)';
+    throw new Error(`Model returned an unexpected structure. Try a larger model.\n\nGot: ${preview}`);
+  }
   return result;
 }
 
