@@ -1,0 +1,35 @@
+services:
+
+  app:
+    build: .
+    ports:
+      - "8000:80"
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    # Expose port 11434 if you want to reach Ollama directly from your host
+    # (e.g. to run `ollama pull` without exec-ing into the container).
+    ports:
+      - "11434:11434"
+
+    # ── GPU support ──────────────────────────────────────────────────────────
+    # Uncomment the block below if your server has an NVIDIA GPU.
+    # Requires the NVIDIA Container Toolkit:
+    #   https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+    #
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  ollama_data:

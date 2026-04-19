@@ -74,6 +74,32 @@ Larger models produce better-structured output. If generation fails with a JSON
 error, try a bigger model. Generation typically takes 15–60 seconds depending on
 hardware.
 
+## Self-hosting with Docker
+
+A `Dockerfile` and `compose.yml` are included for deploying the app alongside
+Ollama on a server.
+
+```bash
+docker compose up -d --build
+```
+
+The app is served on port 8000. Ollama's API is proxied through nginx at `/api/`
+so the browser never makes a cross-origin request — no CORS configuration
+needed.
+
+**After first boot, pull at least one model:**
+
+```bash
+docker compose exec ollama ollama pull llama3.2
+```
+
+Then open the app, go to Settings (⚙), enable AI, and set the Ollama base URL
+to `http://your-server:8000` (no path suffix).
+
+**GPU support:** If your server has an NVIDIA GPU, uncomment the `deploy` block
+in `compose.yml` (requires the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)).
+
 ## Project structure
 
 ```
