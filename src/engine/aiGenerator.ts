@@ -84,7 +84,10 @@ export async function generateWithAI(
   settings: OllamaSettings,
   signal?: AbortSignal,
 ): Promise<BrandOutputs> {
-  const url = `${settings.baseUrl.replace(/\/$/, '')}/api/chat`;
+  // Empty baseUrl means "same origin" — nginx proxies /api/ to Ollama internally.
+  // A full URL (e.g. http://localhost:11434) is used as-is for local dev.
+  const base = settings.baseUrl ? settings.baseUrl.replace(/\/$/, '') : '';
+  const url = `${base}/api/chat`;
 
   let res: Response;
   try {
@@ -104,7 +107,8 @@ export async function generateWithAI(
     });
   } catch (err) {
     if ((err as Error).name === 'AbortError') throw err;
-    throw new Error(`Cannot reach Ollama at ${settings.baseUrl}. Is it running?`);
+    const target = settings.baseUrl || '(same origin /api/)';
+    throw new Error(`Cannot reach Ollama at ${target}. Is it running?`);
   }
 
   if (!res.ok) {
@@ -130,7 +134,8 @@ export async function generateWithAI(
 
 // Test connectivity and return available model names
 export async function testOllamaConnection(baseUrl: string): Promise<string[]> {
-  const url = `${baseUrl.replace(/\/$/, '')}/api/tags`;
+  const base = baseUrl ? baseUrl.replace(/\/$/, '') : '';
+  const url = `${base}/api/tags`;
   const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
   if (!res.ok) throw new Error(`Ollama responded with ${res.status}`);
   const data = await res.json() as { models?: Array<{ name: string }> };

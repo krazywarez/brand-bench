@@ -8,7 +8,7 @@ export interface OllamaSettings {
 
 const DEFAULTS: OllamaSettings = {
   enabled: false,
-  baseUrl: 'http://localhost:11434',
+  baseUrl: '',   // empty = same-origin proxy (/api/ via nginx); set to http://localhost:11434 for local dev
   model: 'llama3.2',
 };
 

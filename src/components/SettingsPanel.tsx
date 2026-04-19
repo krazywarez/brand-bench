@@ -86,7 +86,7 @@ export function SettingsPanel({ settings, onChange, onClose }: Props) {
                     onChange={e => setUrl(e.target.value)}
                     onBlur={commitUrl}
                     onKeyDown={e => e.key === 'Enter' && commitUrl()}
-                    placeholder="http://localhost:11434"
+                    placeholder="empty = same-origin proxy (recommended)"
                     spellCheck={false}
                   />
                   <button
@@ -147,8 +147,10 @@ export function SettingsPanel({ settings, onChange, onClose }: Props) {
               Install from <strong>ollama.com</strong>, then pull any model to get started.
             </p>
             <p>
-              If connection fails, ensure Ollama is running and CORS is open:<br />
-              <code>OLLAMA_ORIGINS=* ollama serve</code>
+              Leave <strong>Server URL</strong> empty to route through the app's
+              own server (works automatically with the Docker setup). For local
+              dev, set it to <code>http://localhost:11434</code> and ensure CORS
+              is open: <code>OLLAMA_ORIGINS=* ollama serve</code>
             </p>
           </div>
         </div>
