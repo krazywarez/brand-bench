@@ -1,0 +1,87 @@
+#+title: brand bench
+
+* what
+client-side brand identity generator. describe a project, get a
+brand package: positioning, tone, color palette, typography, logo
+concepts, taglines, usage examples. runs in the browser.
+
+no backend. no accounts. state persists in localStorage.
+
+* does
+- template generation, offline, tailored by category
+- ai generation via a local ollama instance, cancellable mid-stream
+- multiple packages in tabs, each persisted separately
+- inline editing, click any field in the preview
+- section locking across regenerations
+- undo/redo per package (⌘Z / ⌘⇧Z)
+- editable color swatches, native color picker
+- font pairings per category, 8-level type scale
+- export to markdown, json, or a self-contained html page
+
+* run
+#+begin_src sh
+npm install
+npm run dev
+#+end_src
+
+open http://localhost:5173.
+
+- build:
+
+#+begin_src sh
+npm run build      # dist/
+npm run preview
+#+end_src
+
+* ai with ollama
+1. install ollama, pull a model:
+
+#+begin_src sh
+ollama pull llama3.2
+ollama pull mistral
+ollama pull gemma3
+#+end_src
+
+2. run it:
+
+#+begin_src sh
+ollama serve
+#+end_src
+
+3. a non-default host or port needs OLLAMA_ORIGINS set for browser
+   requests:
+
+#+begin_src conf
+OLLAMA_ORIGINS="*" ollama serve
+#+end_src
+
+4. in the app: Settings, enable AI, set base url
+   (http://localhost:11434), pick a model, Test connection.
+
+bigger models give better-structured output. generation takes
+15-60s depending on hardware.
+
+* docker
+Dockerfile and compose.yml deploy the app next to ollama.
+
+#+begin_src sh
+docker compose up -d --build
+#+end_src
+
+app serves on port 8000. ollama's api is proxied through nginx at
+/api/, so the browser makes no cross-origin request. after first
+boot, pull a model:
+
+#+begin_src sh
+docker compose exec ollama ollama pull llama3.2
+#+end_src
+
+set the ollama base url to http://your-server:8000. for an nvidia
+gpu, uncomment the deploy block in compose.yml (needs the nvidia
+container toolkit).
+
+* stack
+react 18, typescript, vite. no ui library, plain css.
+
+* license
+0bsd. see LICENSE.
