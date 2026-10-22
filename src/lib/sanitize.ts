@@ -56,76 +56,71 @@ const DEFAULT_SWATCHES = [
   { id: 's4', name: 'Text',       hex: '#111111', role: 'text'       },
 ];
 
-export function sanitizeOutputs(raw: unknown): BrandOutputs | null {
-  if (!raw || typeof raw !== 'object') return null;
-  let r = raw as Record<string, unknown>;
+/** The value as a plain record, or an empty one if it is not an object. */
+function record(v: unknown): Record<string, unknown> {
+  return (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+}
 
-  // Unwrap single-key envelopes: {"brand_package": {...}} → {...}
+/** Unwrap single-key envelopes: {"brand_package": {...}} → {...} */
+function unwrapEnvelope(r: Record<string, unknown>): Record<string, unknown> {
   const keys = Object.keys(r);
   if (keys.length === 1 && r[keys[0]] && typeof r[keys[0]] === 'object') {
-    r = r[keys[0]] as Record<string, unknown>;
+    return r[keys[0]] as Record<string, unknown>;
   }
+  return r;
+}
 
-  // Must have at least one recognisable content field
-  if (!r.overview && !r.positioning && !r.tone && !r.titles && !r.palette) return null;
+/** Must have at least one recognisable content field. */
+const CONTENT_FIELDS = ['overview', 'positioning', 'tone', 'titles', 'palette'];
 
-  const tone = (r.tone && typeof r.tone === 'object' ? r.tone : {}) as Record<string, unknown>;
-  const typo = (r.typography && typeof r.typography === 'object' ? r.typography : {}) as Record<string, unknown>;
-  const palette = (r.palette && typeof r.palette === 'object' ? r.palette : {}) as Record<string, unknown>;
+function mapList<T>(v: unknown, map: (item: Record<string, unknown>, i: number) => T): T[] {
+  return Array.isArray(v) ? v.map((item: unknown, i: number) => map(record(item), i)) : [];
+}
 
+function sanitizeSwatches(palette: Record<string, unknown>) {
   // Accept swatches under palette.swatches or palette.colors
   const rawSwatches = Array.isArray(palette.swatches) ? palette.swatches
     : Array.isArray(palette.colors) ? palette.colors
     : [];
+  if (!rawSwatches.length) return DEFAULT_SWATCHES;
+  return mapList(rawSwatches, (sw, i) => ({
+    id:   str(sw.id,   `s${i}`),
+    name: str(sw.name, 'Color'),
+    hex:  normalizeHex(str(sw.hex ?? sw.color ?? sw.value, '#888888')),
+    role: str(sw.role ?? sw.type, 'accent'),
+  }));
+}
 
-  const swatches = rawSwatches.length
-    ? rawSwatches.map((s: unknown, i: number) => {
-        const sw = (s && typeof s === 'object' ? s : {}) as Record<string, unknown>;
-        return {
-          id:   str(sw.id,   `s${i}`),
-          name: str(sw.name, 'Color'),
-          hex:  normalizeHex(str(sw.hex ?? sw.color ?? sw.value, '#888888')),
-          role: str(sw.role ?? sw.type, 'accent'),
-        };
-      })
-    : DEFAULT_SWATCHES;
+export function sanitizeOutputs(raw: unknown): BrandOutputs | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = unwrapEnvelope(raw as Record<string, unknown>);
+  if (!CONTENT_FIELDS.some(k => r[k])) return null;
 
-  const visualDirections = Array.isArray(r.visualDirections)
-    ? r.visualDirections.map((v: unknown, i: number) => {
-        const d = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
-        return {
-          id:          str(d.id,          `v${i + 1}`),
-          name:        str(d.name,        `Direction ${i + 1}`),
-          description: str(d.description, ''),
-          palette:     str(d.palette,     ''),
-          typography:  str(d.typography,  ''),
-          references:  str(d.references,  ''),
-        };
-      })
-    : [];
+  const tone = record(r.tone);
+  const typo = record(r.typography);
+  const swatches = sanitizeSwatches(record(r.palette));
 
-  const logoConcepts = Array.isArray(r.logoConcepts)
-    ? r.logoConcepts.map((v: unknown, i: number) => {
-        const c = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
-        return {
-          id:        str(c.id,        `l${i + 1}`),
-          title:     str(c.title,     `Concept ${i + 1}`),
-          concept:   str(c.concept,   ''),
-          mark:      str(c.mark,      ''),
-          execution: str(c.execution, ''),
-        };
-      })
-    : [];
+  const visualDirections = mapList(r.visualDirections, (d, i) => ({
+    id:          str(d.id,          `v${i + 1}`),
+    name:        str(d.name,        `Direction ${i + 1}`),
+    description: str(d.description, ''),
+    palette:     str(d.palette,     ''),
+    typography:  str(d.typography,  ''),
+    references:  str(d.references,  ''),
+  }));
 
-  const usageExamples = Array.isArray(r.usageExamples)
-    ? r.usageExamples.map((v: unknown) => {
-        const e = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
-        return {
-          context: str(e.context, 'Example'),
-          text:    str(e.text,    ''),
-        };
-      })
-    : [];
+  const logoConcepts = mapList(r.logoConcepts, (c, i) => ({
+    id:        str(c.id,        `l${i + 1}`),
+    title:     str(c.title,     `Concept ${i + 1}`),
+    concept:   str(c.concept,   ''),
+    mark:      str(c.mark,      ''),
+    execution: str(c.execution, ''),
+  }));
+
+  const usageExamples = mapList(r.usageExamples, (e) => ({
+    context: str(e.context, 'Example'),
+    text:    str(e.text,    ''),
+  }));
 
   // Preserve an existing valid scale (already-saved data) or fall back to default
   const existingScale = Array.isArray(typo.scale) ? typo.scale : TYPE_SCALE;

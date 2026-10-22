@@ -10,6 +10,7 @@ import type {
   Typography,
   TypographyToken,
 } from '../types';
+import DIRECTIONS from './directions.json';
 
 type CategoryType = 'developer' | 'creative' | 'product' | 'services' | 'personal' | 'general';
 
@@ -391,122 +392,16 @@ function generateVisualDirections(ctx: GenContext): VisualDirection[] {
   const allDirections: VisualDirection[] = [];
 
   if (catType === 'developer' || hasTone('technical') || hasTone('minimal')) {
-    allDirections.push(
-      {
-        id: 'terminal-minimal',
-        name: 'Terminal Minimal',
-        description:
-          'Dark background, monospace type throughout, no ornament. Functional and uncompromising. Every element earns its place.',
-        palette: 'Near-black ground (#0d0d0d), off-white text (#e0e0e0), single muted accent (amber or green).',
-        typography: 'Monospace primary — JetBrains Mono or Iosevka. Consistent weight. No italic.',
-        references: 'htop, k9s, the Stripe CLI, Linear issue view.',
-      },
-      {
-        id: 'technical-document',
-        name: 'Technical Document',
-        description:
-          'Off-white ground, dense information layout, RFC/spec aesthetic. Designed for reading, not scanning. Typography does all the work.',
-        palette: 'Warm white (#f5f3ef), dark text (#1a1a1a), minimal color — one functional accent only.',
-        typography: 'Sans-serif (Inter or similar) for body, mono for code. Tight line height. Strong hierarchy through size and weight alone.',
-        references: 'Stripe docs, Oxide Computer RFCs, GNU manpages reformatted.',
-      },
-      {
-        id: 'precision-interface',
-        name: 'Precision Interface',
-        description:
-          'Neutral mid-range palette, strong grid, engineering-tool aesthetic. Balanced between document and application. Calm but capable.',
-        palette: 'Mid-grey ground (#f0f0f0 or #1c1c1c), charcoal type, restrained use of blue or slate as action color.',
-        typography: 'Sans-serif for UI, mono for data. Clear size differentiation. No decorative weight use.',
-        references: 'Figma sidebar, Retool, Zed editor, TablePlus.',
-      }
-    );
+    allDirections.push(...DIRECTIONS.technical);
   }
-
   if (catType === 'creative' || catType === 'personal') {
-    allDirections.push(
-      {
-        id: 'editorial',
-        name: 'Editorial',
-        description:
-          'Strong typographic hierarchy, restrained palette, print-design influences. Work foreground, everything else background.',
-        palette: 'Off-white or cream (#f7f4ef), near-black type, accent used once — a single warm or cool tone.',
-        typography: 'A good serif for display, neutral sans for body. Generous leading. No decorative fonts.',
-        references: 'Are.na, Typewolf, Emigre back catalog, Letterform Archive.',
-      },
-      {
-        id: 'quiet-studio',
-        name: 'Quiet Studio',
-        description:
-          'Neutral and considered. Nothing decorative. Space used to direct attention, not fill it.',
-        palette: 'Warm white (#fafaf8) or deep neutral (#141414), type-only color use. No gradients.',
-        typography: 'One typeface family, two weights. Let leading and spacing create rhythm.',
-        references: 'Pentagram case studies, Swiss International Style, Muji product design.',
-      },
-      {
-        id: 'contemporary-craft',
-        name: 'Contemporary Craft',
-        description:
-          'Tactile references — paper, grain, texture — applied with restraint. Warmth without nostalgia.',
-        palette: 'Off-white base with a warm paper tone, subtle texture overlays, earthy accent.',
-        typography: 'Mix: display serif + utility sans. Comfortable reading size. Generous margins.',
-        references: 'Oak Studio, Analog, Offscreen Magazine, Present & Correct.',
-      }
-    );
+    allDirections.push(...DIRECTIONS.creative);
   }
-
   if (catType === 'product' || catType === 'services') {
-    allDirections.push(
-      {
-        id: 'focused-product',
-        name: 'Focused Product',
-        description:
-          'Clean, professional, information-forward. Looks like it was built to be used, not to be admired. Trust through clarity.',
-        palette: 'White or light grey ground, dark neutral type, one brand color used only for primary actions.',
-        typography: 'Neutral sans-serif, systematic sizing, no personality — the product is the personality.',
-        references: 'Linear, Cron (v1), Vercel dashboard, Raycast.',
-      },
-      {
-        id: 'minimal-commerce',
-        name: 'Minimal Commerce',
-        description:
-          'Premium restraint. No decorative elements. White space signals quality. Type-driven.',
-        palette: 'White ground, black type, one warm accent for selective emphasis.',
-        typography: 'A refined sans-serif. Large display size for key claims. Small, tracked caps for labels.',
-        references: 'Stripe marketing, Basecamp, Arc browser landing page.',
-      },
-      {
-        id: 'structured-trust',
-        name: 'Structured Trust',
-        description:
-          'Grid-heavy, methodical, legible. Communicates that things are in order. More function, less flourish.',
-        palette: 'Light neutral ground, two text weights (body + emphasis), a contained accent color.',
-        typography: 'Professional sans-serif — GT Walsheim or Plus Jakarta or similar. Tight tracking for headings.',
-        references: 'Harvest app, FreshBooks, Notion, Loom landing page.',
-      }
-    );
+    allDirections.push(...DIRECTIONS.product);
   }
-
   if (allDirections.length === 0) {
-    allDirections.push(
-      {
-        id: 'type-forward',
-        name: 'Type Forward',
-        description:
-          'Typography as the only design element. No illustration, no photography, no pattern. Words do everything.',
-        palette: 'Black and white, one optional accent. No gradients.',
-        typography: 'One great typeface. Multiple weights. Extreme size contrast. Nothing else needed.',
-        references: 'Early Bloomberg Businessweek covers, Helvetica film poster, The Economist.',
-      },
-      {
-        id: 'system-neutral',
-        name: 'System Neutral',
-        description:
-          'Invisible design — system fonts, default spacing, no signature. The brand is in the content, not the container.',
-        palette: 'System defaults. One custom color — the brand color. Everything else inherited.',
-        typography: 'System UI stack. Optimized for the OS it runs on.',
-        references: 'HN, iA Writer, Pinboard, older Stripe.',
-      }
-    );
+    allDirections.push(...DIRECTIONS.fallback);
   }
 
   return pickN(allDirections, Math.min(3, allDirections.length));
@@ -768,166 +663,56 @@ function makeSwatches(entries: [string, string, string][]): ColorSwatch[] {
   return entries.map(([name, hex, role], i) => ({ id: `s${i}`, name, hex, role }));
 }
 
+type SwatchEntry = [string, string, string]; // [name, hex, role]
+
+/** A six-swatch palette: background, surface, neutral, primary, accent, text. */
+function sixTone(
+  [background, surface, neutral, primary, accent, text]: [string, string, string, string, string, string],
+  neutralName = 'Neutral',
+): SwatchEntry[] {
+  return [
+    ['Background', background, 'background'],
+    ['Surface', surface, 'neutral'],
+    [neutralName, neutral, 'neutral'],
+    ['Primary', primary, 'primary'],
+    ['Accent', accent, 'accent'],
+    ['Text', text, 'text'],
+  ];
+}
+
 function generateColorPalette(ctx: GenContext): ColorPalette {
-  type SwatchEntry = [string, string, string]; // [name, hex, role]
   type PaletteSet = SwatchEntry[][];
 
   const palettes: Record<string, PaletteSet> = {
     developer: [
-      [
-        ['Background', '#0d1117', 'background'],
-        ['Surface', '#161b22', 'neutral'],
-        ['Border', '#30363d', 'neutral'],
-        ['Primary', '#58a6ff', 'primary'],
-        ['Accent', '#3fb950', 'accent'],
-        ['Text', '#f0f6fc', 'text'],
-      ],
-      [
-        ['Background', '#0a0010', 'background'],
-        ['Surface', '#160025', 'neutral'],
-        ['Neutral', '#2d1f3d', 'neutral'],
-        ['Primary', '#7c3aed', 'primary'],
-        ['Accent', '#a78bfa', 'accent'],
-        ['Text', '#e2d9f3', 'text'],
-      ],
-      [
-        ['Background', '#0a0a0a', 'background'],
-        ['Surface', '#141414', 'neutral'],
-        ['Neutral', '#292929', 'neutral'],
-        ['Primary', '#e5e5e5', 'primary'],
-        ['Accent', '#c9a96e', 'accent'],
-        ['Text', '#f5f5f5', 'text'],
-      ],
+      sixTone(['#0d1117', '#161b22', '#30363d', '#58a6ff', '#3fb950', '#f0f6fc'], 'Border'),
+      sixTone(['#0a0010', '#160025', '#2d1f3d', '#7c3aed', '#a78bfa', '#e2d9f3']),
+      sixTone(['#0a0a0a', '#141414', '#292929', '#e5e5e5', '#c9a96e', '#f5f5f5']),
     ],
     creative: [
-      [
-        ['Background', '#faf7f2', 'background'],
-        ['Surface', '#f5efe4', 'neutral'],
-        ['Neutral', '#e8d9c4', 'neutral'],
-        ['Primary', '#c07850', 'primary'],
-        ['Accent', '#4a7c5f', 'accent'],
-        ['Text', '#1a1410', 'text'],
-      ],
-      [
-        ['Background', '#0f0f0f', 'background'],
-        ['Surface', '#1a1a1a', 'neutral'],
-        ['Neutral', '#2e2e2e', 'neutral'],
-        ['Primary', '#ff6b35', 'primary'],
-        ['Accent', '#ffd700', 'accent'],
-        ['Text', '#f8f8f8', 'text'],
-      ],
-      [
-        ['Background', '#f8f4ef', 'background'],
-        ['Surface', '#efe9e0', 'neutral'],
-        ['Neutral', '#d4c4b0', 'neutral'],
-        ['Primary', '#8b5e3c', 'primary'],
-        ['Accent', '#6b8f71', 'accent'],
-        ['Text', '#2c2018', 'text'],
-      ],
+      sixTone(['#faf7f2', '#f5efe4', '#e8d9c4', '#c07850', '#4a7c5f', '#1a1410']),
+      sixTone(['#0f0f0f', '#1a1a1a', '#2e2e2e', '#ff6b35', '#ffd700', '#f8f8f8']),
+      sixTone(['#f8f4ef', '#efe9e0', '#d4c4b0', '#8b5e3c', '#6b8f71', '#2c2018']),
     ],
     product: [
-      [
-        ['Background', '#fafbfc', 'background'],
-        ['Surface', '#f0f4f8', 'neutral'],
-        ['Neutral', '#d1dce8', 'neutral'],
-        ['Primary', '#2563eb', 'primary'],
-        ['Accent', '#7c3aed', 'accent'],
-        ['Text', '#1e293b', 'text'],
-      ],
-      [
-        ['Background', '#0f172a', 'background'],
-        ['Surface', '#1e293b', 'neutral'],
-        ['Neutral', '#334155', 'neutral'],
-        ['Primary', '#6366f1', 'primary'],
-        ['Accent', '#22d3ee', 'accent'],
-        ['Text', '#f1f5f9', 'text'],
-      ],
-      [
-        ['Background', '#f0fafa', 'background'],
-        ['Surface', '#e0f5f5', 'neutral'],
-        ['Neutral', '#b2dede', 'neutral'],
-        ['Primary', '#0d9488', 'primary'],
-        ['Accent', '#f59e0b', 'accent'],
-        ['Text', '#134e4a', 'text'],
-      ],
+      sixTone(['#fafbfc', '#f0f4f8', '#d1dce8', '#2563eb', '#7c3aed', '#1e293b']),
+      sixTone(['#0f172a', '#1e293b', '#334155', '#6366f1', '#22d3ee', '#f1f5f9']),
+      sixTone(['#f0fafa', '#e0f5f5', '#b2dede', '#0d9488', '#f59e0b', '#134e4a']),
     ],
     services: [
-      [
-        ['Background', '#f8fafd', 'background'],
-        ['Surface', '#edf2fa', 'neutral'],
-        ['Neutral', '#ccd9ee', 'neutral'],
-        ['Primary', '#1d4ed8', 'primary'],
-        ['Accent', '#0f9e6e', 'accent'],
-        ['Text', '#1a2038', 'text'],
-      ],
-      [
-        ['Background', '#0c1421', 'background'],
-        ['Surface', '#152035', 'neutral'],
-        ['Neutral', '#243450', 'neutral'],
-        ['Primary', '#3b82f6', 'primary'],
-        ['Accent', '#34d399', 'accent'],
-        ['Text', '#f8fafc', 'text'],
-      ],
-      [
-        ['Background', '#faf8f5', 'background'],
-        ['Surface', '#f0ebe0', 'neutral'],
-        ['Neutral', '#d9cdb8', 'neutral'],
-        ['Primary', '#78523a', 'primary'],
-        ['Accent', '#2d6a4f', 'accent'],
-        ['Text', '#1c1410', 'text'],
-      ],
+      sixTone(['#f8fafd', '#edf2fa', '#ccd9ee', '#1d4ed8', '#0f9e6e', '#1a2038']),
+      sixTone(['#0c1421', '#152035', '#243450', '#3b82f6', '#34d399', '#f8fafc']),
+      sixTone(['#faf8f5', '#f0ebe0', '#d9cdb8', '#78523a', '#2d6a4f', '#1c1410']),
     ],
     personal: [
-      [
-        ['Background', '#fffef9', 'background'],
-        ['Surface', '#fdf8ee', 'neutral'],
-        ['Neutral', '#f0e6cc', 'neutral'],
-        ['Primary', '#c9a96e', 'primary'],
-        ['Accent', '#7c9e87', 'accent'],
-        ['Text', '#2d2d2d', 'text'],
-      ],
-      [
-        ['Background', '#fafafa', 'background'],
-        ['Surface', '#f5f5f5', 'neutral'],
-        ['Neutral', '#e5e5e5', 'neutral'],
-        ['Primary', '#171717', 'primary'],
-        ['Accent', '#737373', 'accent'],
-        ['Text', '#404040', 'text'],
-      ],
-      [
-        ['Background', '#f9f8ff', 'background'],
-        ['Surface', '#f0eeff', 'neutral'],
-        ['Neutral', '#ddd8f7', 'neutral'],
-        ['Primary', '#4f46e5', 'primary'],
-        ['Accent', '#ec4899', 'accent'],
-        ['Text', '#1e1b4b', 'text'],
-      ],
+      sixTone(['#fffef9', '#fdf8ee', '#f0e6cc', '#c9a96e', '#7c9e87', '#2d2d2d']),
+      sixTone(['#fafafa', '#f5f5f5', '#e5e5e5', '#171717', '#737373', '#404040']),
+      sixTone(['#f9f8ff', '#f0eeff', '#ddd8f7', '#4f46e5', '#ec4899', '#1e1b4b']),
     ],
     general: [
-      [
-        ['Background', '#111111', 'background'],
-        ['Surface', '#1a1a1a', 'neutral'],
-        ['Neutral', '#2e2e2e', 'neutral'],
-        ['Primary', '#c9a96e', 'primary'],
-        ['Accent', '#6b8f71', 'accent'],
-        ['Text', '#dedede', 'text'],
-      ],
-      [
-        ['Background', '#ffffff', 'background'],
-        ['Surface', '#f5f5f5', 'neutral'],
-        ['Neutral', '#e0e0e0', 'neutral'],
-        ['Primary', '#1a1a1a', 'primary'],
-        ['Accent', '#3b82f6', 'accent'],
-        ['Text', '#333333', 'text'],
-      ],
-      [
-        ['Background', '#0f0f1a', 'background'],
-        ['Surface', '#1a1a2e', 'neutral'],
-        ['Neutral', '#252545', 'neutral'],
-        ['Primary', '#4f8ef7', 'primary'],
-        ['Accent', '#a78bfa', 'accent'],
-        ['Text', '#e2e8f0', 'text'],
-      ],
+      sixTone(['#111111', '#1a1a1a', '#2e2e2e', '#c9a96e', '#6b8f71', '#dedede']),
+      sixTone(['#ffffff', '#f5f5f5', '#e0e0e0', '#1a1a1a', '#3b82f6', '#333333']),
+      sixTone(['#0f0f1a', '#1a1a2e', '#252545', '#4f8ef7', '#a78bfa', '#e2e8f0']),
     ],
   };
 

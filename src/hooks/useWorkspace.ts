@@ -73,25 +73,25 @@ function applyLocks(
   return merged;
 }
 
-export function useWorkspace(storageKey = 'bw:workspace') {
-  const saved = loadState(storageKey);
+/** The template or AI outputs for `inputs`, or null if aborted while waiting. */
+async function produceOutputs(
+  inputs: BrandInputs,
+  settings: ReturnType<typeof readSettings>,
+  signal: AbortSignal,
+): Promise<BrandOutputs | null> {
+  if (settings.enabled) return generateWithAI(inputs, settings, signal);
+  await new Promise(r => setTimeout(r, 120));
+  if (signal.aborted) return null;
+  return generate(inputs);
+}
 
-  const [inputs, setInputsRaw]   = useState<BrandInputs>(saved.inputs ?? DEFAULT_INPUTS);
-  const [outputs, setOutputs]    = useState<BrandOutputs | null>(saved.outputs ?? null);
-  const [edits, setEditsRaw]     = useState<Partial<BrandOutputs>>(saved.edits ?? {});
-  const [locked, setLocked]      = useState<LockedSections>(saved.locked ?? DEFAULT_LOCKED);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generateMode, setGenerateMode] = useState<'template' | string>('template');
-  const [generateError, setGenerateError] = useState<string | null>(null);
+/** Section edits with an undo/redo stack. */
+function useEditHistory(initial: Partial<BrandOutputs>) {
+  const [edits, setEditsRaw] = useState<Partial<BrandOutputs>>(initial);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-
-  const editStack = useRef<Array<Partial<BrandOutputs>>>([saved.edits ?? {}]);
+  const editStack = useRef<Array<Partial<BrandOutputs>>>([initial]);
   const stackIdx  = useRef(0);
-  const abortRef  = useRef<AbortController | null>(null);
-
-  const stateRef = useRef({ inputs, outputs, edits, locked });
-  stateRef.current = { inputs, outputs, edits, locked };
 
   const syncUndoRedo = () => {
     setCanUndo(stackIdx.current > 0);
@@ -108,10 +108,51 @@ export function useWorkspace(storageKey = 'bw:workspace') {
     syncUndoRedo();
   }, []);
 
-  const persistInputs = useCallback((value: BrandInputs) => {
-    const { outputs, edits, locked } = stateRef.current;
-    saveState(storageKey, { inputs: value, outputs, edits, locked });
+  const reset = useCallback(() => {
+    editStack.current = [{}];
+    stackIdx.current  = 0;
+    setEditsRaw({});
+    syncUndoRedo();
+  }, []);
+
+  // Move `delta` steps through the history; returns the edits stepped to, or
+  // null if that step does not exist.
+  const step = useCallback((delta: number): Partial<BrandOutputs> | null => {
+    const index = stackIdx.current + delta;
+    if (index < 0 || index >= editStack.current.length) return null;
+    stackIdx.current = index;
+    const next = editStack.current[index];
+    setEdits(next, false);
+    return next;
+  }, [setEdits]);
+
+  return { edits, canUndo, canRedo, setEdits, reset, step };
+}
+
+export function useWorkspace(storageKey = 'bw:workspace') {
+  const saved = loadState(storageKey);
+
+  const [inputs, setInputsRaw]   = useState<BrandInputs>(saved.inputs ?? DEFAULT_INPUTS);
+  const [outputs, setOutputs]    = useState<BrandOutputs | null>(saved.outputs ?? null);
+  const [locked, setLocked]      = useState<LockedSections>(saved.locked ?? DEFAULT_LOCKED);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generateMode, setGenerateMode] = useState<'template' | string>('template');
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const history = useEditHistory(saved.edits ?? {});
+  const { edits, setEdits } = history;
+  const abortRef  = useRef<AbortController | null>(null);
+
+  const stateRef = useRef({ inputs, outputs, edits, locked });
+  stateRef.current = { inputs, outputs, edits, locked };
+
+  // Save the current state with `patch` applied.
+  const persist = useCallback((patch: Partial<WorkspaceState>) => {
+    saveState(storageKey, { ...stateRef.current, ...patch });
   }, [storageKey]);
+
+  const persistInputs = useCallback((value: BrandInputs) => {
+    persist({ inputs: value });
+  }, [persist]);
 
   const setInputs = useCallback((next: BrandInputs | ((prev: BrandInputs) => BrandInputs)) => {
     setInputsRaw(prev => {
@@ -135,24 +176,12 @@ export function useWorkspace(storageKey = 'bw:workspace') {
     setGenerateMode(settings.enabled ? settings.model : 'template');
 
     try {
-      let newOutputs: BrandOutputs;
-
-      if (settings.enabled) {
-        newOutputs = await generateWithAI(inputs, settings, abort.signal);
-      } else {
-        await new Promise(r => setTimeout(r, 120));
-        if (abort.signal.aborted) return;
-        newOutputs = generate(inputs);
-      }
-
-      if (abort.signal.aborted) return;
+      const newOutputs = await produceOutputs(inputs, settings, abort.signal);
+      if (!newOutputs || abort.signal.aborted) return;
 
       const merged = applyLocks({ ...newOutputs }, locked, outputs, edits);
       setOutputs(merged);
-      editStack.current = [{}];
-      stackIdx.current  = 0;
-      setEditsRaw({});
-      syncUndoRedo();
+      history.reset();
       saveState(storageKey, { inputs, outputs: merged, edits: {}, locked });
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
@@ -160,7 +189,7 @@ export function useWorkspace(storageKey = 'bw:workspace') {
     } finally {
       setIsGenerating(false);
     }
-  }, [storageKey]);
+  }, [storageKey, history.reset]);
 
   const cancelGenerate = useCallback(() => {
     abortRef.current?.abort();
@@ -169,38 +198,26 @@ export function useWorkspace(storageKey = 'bw:workspace') {
   }, []);
 
   const updateEdit = useCallback(<K extends keyof BrandOutputs>(key: K, value: BrandOutputs[K]) => {
-    const { inputs, outputs, locked } = stateRef.current;
     const next = { ...stateRef.current.edits, [key]: value };
     setEdits(next, true);
-    saveState(storageKey, { inputs, outputs, edits: next, locked });
-  }, [storageKey, setEdits]);
+    persist({ edits: next });
+  }, [persist, setEdits]);
 
-  const undo = useCallback(() => {
-    if (stackIdx.current <= 0) return;
-    stackIdx.current -= 1;
-    const prev = editStack.current[stackIdx.current];
-    const { inputs, outputs, locked } = stateRef.current;
-    setEdits(prev, false);
-    saveState(storageKey, { inputs, outputs, edits: prev, locked });
-  }, [storageKey, setEdits]);
+  const stepHistory = useCallback((delta: number) => {
+    const edits = history.step(delta);
+    if (edits) persist({ edits });
+  }, [persist, history.step]);
 
-  const redo = useCallback(() => {
-    if (stackIdx.current >= editStack.current.length - 1) return;
-    stackIdx.current += 1;
-    const next = editStack.current[stackIdx.current];
-    const { inputs, outputs, locked } = stateRef.current;
-    setEdits(next, false);
-    saveState(storageKey, { inputs, outputs, edits: next, locked });
-  }, [storageKey, setEdits]);
+  const undo = useCallback(() => stepHistory(-1), [stepHistory]);
+  const redo = useCallback(() => stepHistory(1), [stepHistory]);
 
   const toggleLock = useCallback((section: keyof LockedSections) => {
     setLocked(prev => {
       const next = { ...prev, [section]: !prev[section] };
-      const { inputs, outputs, edits } = stateRef.current;
-      saveState(storageKey, { inputs, outputs, edits, locked: next });
+      persist({ locked: next });
       return next;
     });
-  }, [storageKey]);
+  }, [persist]);
 
   const effectiveOutputs: BrandOutputs | null = outputs ? { ...outputs, ...edits } : null;
 
@@ -218,8 +235,8 @@ export function useWorkspace(storageKey = 'bw:workspace') {
     toggleLock,
     undo,
     redo,
-    canUndo,
-    canRedo,
+    canUndo: history.canUndo,
+    canRedo: history.canRedo,
     hasOutput: outputs !== null,
   };
 }

@@ -1,0 +1,98 @@
+{
+  "technical": [
+    {
+      "id": "terminal-minimal",
+      "name": "Terminal Minimal",
+      "description": "Dark background, monospace type throughout, no ornament. Functional and uncompromising. Every element earns its place.",
+      "palette": "Near-black ground (#0d0d0d), off-white text (#e0e0e0), single muted accent (amber or green).",
+      "typography": "Monospace primary — JetBrains Mono or Iosevka. Consistent weight. No italic.",
+      "references": "htop, k9s, the Stripe CLI, Linear issue view."
+    },
+    {
+      "id": "technical-document",
+      "name": "Technical Document",
+      "description": "Off-white ground, dense information layout, RFC/spec aesthetic. Designed for reading, not scanning. Typography does all the work.",
+      "palette": "Warm white (#f5f3ef), dark text (#1a1a1a), minimal color — one functional accent only.",
+      "typography": "Sans-serif (Inter or similar) for body, mono for code. Tight line height. Strong hierarchy through size and weight alone.",
+      "references": "Stripe docs, Oxide Computer RFCs, GNU manpages reformatted."
+    },
+    {
+      "id": "precision-interface",
+      "name": "Precision Interface",
+      "description": "Neutral mid-range palette, strong grid, engineering-tool aesthetic. Balanced between document and application. Calm but capable.",
+      "palette": "Mid-grey ground (#f0f0f0 or #1c1c1c), charcoal type, restrained use of blue or slate as action color.",
+      "typography": "Sans-serif for UI, mono for data. Clear size differentiation. No decorative weight use.",
+      "references": "Figma sidebar, Retool, Zed editor, TablePlus."
+    }
+  ],
+  "creative": [
+    {
+      "id": "editorial",
+      "name": "Editorial",
+      "description": "Strong typographic hierarchy, restrained palette, print-design influences. Work foreground, everything else background.",
+      "palette": "Off-white or cream (#f7f4ef), near-black type, accent used once — a single warm or cool tone.",
+      "typography": "A good serif for display, neutral sans for body. Generous leading. No decorative fonts.",
+      "references": "Are.na, Typewolf, Emigre back catalog, Letterform Archive."
+    },
+    {
+      "id": "quiet-studio",
+      "name": "Quiet Studio",
+      "description": "Neutral and considered. Nothing decorative. Space used to direct attention, not fill it.",
+      "palette": "Warm white (#fafaf8) or deep neutral (#141414), type-only color use. No gradients.",
+      "typography": "One typeface family, two weights. Let leading and spacing create rhythm.",
+      "references": "Pentagram case studies, Swiss International Style, Muji product design."
+    },
+    {
+      "id": "contemporary-craft",
+      "name": "Contemporary Craft",
+      "description": "Tactile references — paper, grain, texture — applied with restraint. Warmth without nostalgia.",
+      "palette": "Off-white base with a warm paper tone, subtle texture overlays, earthy accent.",
+      "typography": "Mix: display serif + utility sans. Comfortable reading size. Generous margins.",
+      "references": "Oak Studio, Analog, Offscreen Magazine, Present & Correct."
+    }
+  ],
+  "product": [
+    {
+      "id": "focused-product",
+      "name": "Focused Product",
+      "description": "Clean, professional, information-forward. Looks like it was built to be used, not to be admired. Trust through clarity.",
+      "palette": "White or light grey ground, dark neutral type, one brand color used only for primary actions.",
+      "typography": "Neutral sans-serif, systematic sizing, no personality — the product is the personality.",
+      "references": "Linear, Cron (v1), Vercel dashboard, Raycast."
+    },
+    {
+      "id": "minimal-commerce",
+      "name": "Minimal Commerce",
+      "description": "Premium restraint. No decorative elements. White space signals quality. Type-driven.",
+      "palette": "White ground, black type, one warm accent for selective emphasis.",
+      "typography": "A refined sans-serif. Large display size for key claims. Small, tracked caps for labels.",
+      "references": "Stripe marketing, Basecamp, Arc browser landing page."
+    },
+    {
+      "id": "structured-trust",
+      "name": "Structured Trust",
+      "description": "Grid-heavy, methodical, legible. Communicates that things are in order. More function, less flourish.",
+      "palette": "Light neutral ground, two text weights (body + emphasis), a contained accent color.",
+      "typography": "Professional sans-serif — GT Walsheim or Plus Jakarta or similar. Tight tracking for headings.",
+      "references": "Harvest app, FreshBooks, Notion, Loom landing page."
+    }
+  ],
+  "fallback": [
+    {
+      "id": "type-forward",
+      "name": "Type Forward",
+      "description": "Typography as the only design element. No illustration, no photography, no pattern. Words do everything.",
+      "palette": "Black and white, one optional accent. No gradients.",
+      "typography": "One great typeface. Multiple weights. Extreme size contrast. Nothing else needed.",
+      "references": "Early Bloomberg Businessweek covers, Helvetica film poster, The Economist."
+    },
+    {
+      "id": "system-neutral",
+      "name": "System Neutral",
+      "description": "Invisible design — system fonts, default spacing, no signature. The brand is in the content, not the container.",
+      "palette": "System defaults. One custom color — the brand color. Everything else inherited.",
+      "typography": "System UI stack. Optimized for the OS it runs on.",
+      "references": "HN, iA Writer, Pinboard, older Stripe."
+    }
+  ]
+}

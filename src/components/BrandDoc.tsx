@@ -220,27 +220,55 @@ interface ColorSwatchCardProps {
   onRemove: () => void;
 }
 
-function ColorSwatchCard({ swatch, onChange, onRemove }: ColorSwatchCardProps) {
-  const [nameEditing, setNameEditing] = useState(false);
-  const [nameDraft, setNameDraft] = useState(swatch.name);
-  const [hexEditing, setHexEditing] = useState(false);
-  const [hexDraft, setHexDraft] = useState(swatch.hex);
+interface EditableFieldProps {
+  value: string;
+  className: string;
+  inputClassName: string;
+  onCommit: (draft: string) => void;
+}
 
-  const commitName = () => {
-    setNameEditing(false);
-    const v = nameDraft.trim();
+/** Text that turns into an input on click; Enter or blur commits, Escape cancels. */
+function EditableField({ value, className, inputClassName, onCommit }: EditableFieldProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  const commit = () => {
+    setEditing(false);
+    onCommit(draft);
+  };
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        className={inputClassName}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') { setEditing(false); setDraft(value); }
+        }}
+      />
+    );
+  }
+  return (
+    <div className={className} onClick={() => { setDraft(value); setEditing(true); }} title="Click to edit">
+      {value}
+    </div>
+  );
+}
+
+function ColorSwatchCard({ swatch, onChange, onRemove }: ColorSwatchCardProps) {
+  const commitName = (draft: string) => {
+    const v = draft.trim();
     if (v && v !== swatch.name) onChange({ ...swatch, name: v });
   };
 
-  const commitHex = () => {
-    setHexEditing(false);
-    const v = hexDraft.trim().toLowerCase();
+  const commitHex = (draft: string) => {
+    const v = draft.trim().toLowerCase();
     const normalized = v.startsWith('#') ? v : `#${v}`;
-    if (/^#[0-9a-f]{6}$/.test(normalized)) {
-      onChange({ ...swatch, hex: normalized });
-    } else {
-      setHexDraft(swatch.hex);
-    }
+    if (/^#[0-9a-f]{6}$/.test(normalized)) onChange({ ...swatch, hex: normalized });
   };
 
   return (
@@ -256,40 +284,18 @@ function ColorSwatchCard({ swatch, onChange, onRemove }: ColorSwatchCardProps) {
         <button className="color-swatch-remove" onClick={onRemove} title="Remove">×</button>
       </div>
       <div className="color-swatch-info">
-        {nameEditing ? (
-          <input
-            autoFocus
-            className="color-swatch-field-input"
-            value={nameDraft}
-            onChange={e => setNameDraft(e.target.value)}
-            onBlur={commitName}
-            onKeyDown={e => {
-              if (e.key === 'Enter') commitName();
-              if (e.key === 'Escape') { setNameEditing(false); setNameDraft(swatch.name); }
-            }}
-          />
-        ) : (
-          <div className="color-swatch-name" onClick={() => { setNameDraft(swatch.name); setNameEditing(true); }} title="Click to edit">
-            {swatch.name}
-          </div>
-        )}
-        {hexEditing ? (
-          <input
-            autoFocus
-            className="color-swatch-field-input color-swatch-hex-input"
-            value={hexDraft}
-            onChange={e => setHexDraft(e.target.value)}
-            onBlur={commitHex}
-            onKeyDown={e => {
-              if (e.key === 'Enter') commitHex();
-              if (e.key === 'Escape') { setHexEditing(false); setHexDraft(swatch.hex); }
-            }}
-          />
-        ) : (
-          <div className="color-swatch-hex" onClick={() => { setHexDraft(swatch.hex); setHexEditing(true); }} title="Click to edit">
-            {swatch.hex}
-          </div>
-        )}
+        <EditableField
+          value={swatch.name}
+          className="color-swatch-name"
+          inputClassName="color-swatch-field-input"
+          onCommit={commitName}
+        />
+        <EditableField
+          value={swatch.hex}
+          className="color-swatch-hex"
+          inputClassName="color-swatch-field-input color-swatch-hex-input"
+          onCommit={commitHex}
+        />
       </div>
     </div>
   );

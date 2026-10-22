@@ -18,6 +18,99 @@ interface MenuState {
   left: number;
 }
 
+interface TabMenuProps {
+  menu: MenuState;
+  canDelete: boolean;
+  onRename: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}
+
+/** A tab's options dropdown, rendered in a portal to escape overflow clipping. */
+function TabMenu({ menu, canDelete, onRename, onDuplicate, onDelete, onClose }: TabMenuProps) {
+  return createPortal(
+    <div
+      className="pkg-tab-dropdown"
+      style={{ position: 'fixed', top: menu.top, left: menu.left }}
+      onClick={e => e.stopPropagation()}
+    >
+      <button onClick={() => { onRename(); onClose(); }}>Rename</button>
+      <button onClick={() => { onDuplicate(); onClose(); }}>Duplicate</button>
+      {canDelete && (
+        <button className="danger" onClick={() => { onDelete(); onClose(); }}>Delete</button>
+      )}
+    </div>,
+    document.body
+  );
+}
+
+interface PackageTabProps {
+  slot: PackageSlot;
+  active: boolean;
+  editing: boolean;
+  draft: string;
+  canRemove: boolean;
+  onDraft: (value: string) => void;
+  onSwitch: () => void;
+  onStartRename: () => void;
+  onCommit: () => void;
+  onCancel: () => void;
+  onMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onRemove: () => void;
+}
+
+function PackageTab(props: PackageTabProps) {
+  const { slot, active, editing, draft, canRemove } = props;
+  return (
+    <div
+      className={`pkg-tab${active ? ' active' : ''}`}
+      onClick={() => !active && props.onSwitch()}
+    >
+      {editing ? (
+        <input
+          autoFocus
+          className="pkg-tab-input"
+          value={draft}
+          onChange={e => props.onDraft(e.target.value)}
+          onBlur={props.onCommit}
+          onKeyDown={e => {
+            if (e.key === 'Enter') props.onCommit();
+            if (e.key === 'Escape') props.onCancel();
+          }}
+          onClick={e => e.stopPropagation()}
+        />
+      ) : (
+        <span
+          className="pkg-tab-name"
+          onDoubleClick={e => { e.stopPropagation(); props.onStartRename(); }}
+        >
+          {slot.name}
+        </span>
+      )}
+
+      <div className="pkg-tab-actions">
+        <button
+          className="pkg-tab-menu-btn"
+          title="Options"
+          onClick={props.onMenu}
+        >
+          ···
+        </button>
+        {canRemove && (
+          <button
+            className="pkg-tab-close"
+            title="Remove"
+            onClick={e => { e.stopPropagation(); props.onRemove(); }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PackageSwitcher({ slots, activeId, onSwitch, onCreate, onRemove, onRename, onDuplicate }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -38,6 +131,11 @@ export function PackageSwitcher({ slots, activeId, onSwitch, onCreate, onRemove,
     setMenu({ id, top: rect.bottom + 4, left: rect.left });
   };
 
+  const startRename = (slot: PackageSlot) => {
+    setDraft(slot.name);
+    setEditingId(slot.id);
+  };
+
   const commitRename = (id: string) => {
     const name = draft.trim();
     if (name) onRename(id, name);
@@ -47,78 +145,37 @@ export function PackageSwitcher({ slots, activeId, onSwitch, onCreate, onRemove,
   return (
     <div className="pkg-switcher">
       {slots.map(slot => (
-        <div
+        <PackageTab
           key={slot.id}
-          className={`pkg-tab${slot.id === activeId ? ' active' : ''}`}
-          onClick={() => slot.id !== activeId && onSwitch(slot.id)}
-        >
-          {editingId === slot.id ? (
-            <input
-              autoFocus
-              className="pkg-tab-input"
-              value={draft}
-              onChange={e => setDraft(e.target.value)}
-              onBlur={() => commitRename(slot.id)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') commitRename(slot.id);
-                if (e.key === 'Escape') setEditingId(null);
-              }}
-              onClick={e => e.stopPropagation()}
-            />
-          ) : (
-            <span
-              className="pkg-tab-name"
-              onDoubleClick={e => {
-                e.stopPropagation();
-                setDraft(slot.name);
-                setEditingId(slot.id);
-              }}
-            >
-              {slot.name}
-            </span>
-          )}
-
-          <div className="pkg-tab-actions">
-            <button
-              className="pkg-tab-menu-btn"
-              title="Options"
-              onClick={e => openMenu(slot.id, e)}
-            >
-              ···
-            </button>
-            {slots.length > 1 && (
-              <button
-                className="pkg-tab-close"
-                title="Remove"
-                onClick={e => { e.stopPropagation(); onRemove(slot.id); }}
-              >
-                ×
-              </button>
-            )}
-          </div>
-        </div>
+          slot={slot}
+          active={slot.id === activeId}
+          editing={editingId === slot.id}
+          draft={draft}
+          canRemove={slots.length > 1}
+          onDraft={setDraft}
+          onSwitch={() => onSwitch(slot.id)}
+          onStartRename={() => startRename(slot)}
+          onCommit={() => commitRename(slot.id)}
+          onCancel={() => setEditingId(null)}
+          onMenu={e => openMenu(slot.id, e)}
+          onRemove={() => onRemove(slot.id)}
+        />
       ))}
 
       <button className="pkg-new-btn" onClick={onCreate} title="New package">+</button>
 
-      {/* Dropdown rendered in a portal to escape overflow clipping */}
-      {menu && createPortal(
-        <div
-          className="pkg-tab-dropdown"
-          style={{ position: 'fixed', top: menu.top, left: menu.left }}
-          onClick={e => e.stopPropagation()}
-        >
-          <button onClick={() => {
+      {menu && (
+        <TabMenu
+          menu={menu}
+          canDelete={slots.length > 1}
+          onRename={() => {
             const slot = slots.find(s => s.id === menu.id);
-            if (slot) { setDraft(slot.name); setEditingId(slot.id); }
-            setMenu(null);
-          }}>Rename</button>
-          <button onClick={() => { onDuplicate(menu.id); setMenu(null); }}>Duplicate</button>
-          {slots.length > 1 && (
-            <button className="danger" onClick={() => { onRemove(menu.id); setMenu(null); }}>Delete</button>
-          )}
-        </div>,
-        document.body
+            if (slot) startRename(slot);
+          }}
+          onDuplicate={() => onDuplicate(menu.id)}
+          onDelete={() => onRemove(menu.id)}
+          onClose={() => setMenu(null)}
+        />
       )}
     </div>
   );

@@ -22,6 +22,26 @@ interface WorkspaceShellProps {
   aiEnabled: boolean;
 }
 
+/** ⌘Z / Ctrl+Z undoes, with Shift redoes. */
+function useUndoShortcuts(undo: () => void, redo: () => void) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 'z') return;
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo]);
+}
+
+function generateLabel(isGenerating: boolean, hasOutputs: boolean, aiEnabled: boolean): string {
+  if (isGenerating) return 'Cancel';
+  if (hasOutputs) return 'Regenerate';
+  return aiEnabled ? 'Generate with AI' : 'Generate';
+}
+
 function WorkspaceShell({
   storageKey, slots, activeId,
   onSwitch, onCreate, onRemove, onRename, onDuplicate,
@@ -33,25 +53,10 @@ function WorkspaceShell({
     undo, redo, canUndo, canRedo,
   } = useWorkspace(storageKey);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key !== 'z') return;
-      e.preventDefault();
-      if (e.shiftKey) redo();
-      else undo();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [undo, redo]);
+  useUndoShortcuts(undo, redo);
 
   const handleEdit = <K extends keyof BrandOutputs>(key: K, value: BrandOutputs[K]) =>
     updateEdit(key, value);
-
-  const generateLabel = isGenerating
-    ? 'Cancel'
-    : outputs
-      ? (aiEnabled ? `Regenerate` : 'Regenerate')
-      : (aiEnabled ? 'Generate with AI' : 'Generate');
 
   return (
     <>
@@ -84,7 +89,7 @@ function WorkspaceShell({
           onChange={setInputs}
           onGenerate={isGenerating ? cancelGenerate : runGenerate}
           isGenerating={isGenerating}
-          generateLabel={generateLabel}
+          generateLabel={generateLabel(isGenerating, outputs !== null, aiEnabled)}
         />
         <PreviewPanel
           inputs={inputs}

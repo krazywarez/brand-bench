@@ -45,68 +45,61 @@ function saveStore(store: PackagesStore): void {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch { /* ignore */ }
 }
 
+function withActive(prev: PackagesStore, id: string): PackagesStore {
+  return prev.activeId === id ? prev : { ...prev, activeId: id };
+}
+
+function withNewSlot(prev: PackagesStore): PackagesStore {
+  const slot = makeSlot(`Package ${prev.slots.length + 1}`);
+  // New slot has no data in localStorage — useWorkspace will start fresh
+  return { activeId: slot.id, slots: [...prev.slots, slot] };
+}
+
+function withoutSlot(prev: PackagesStore, id: string): PackagesStore {
+  if (prev.slots.length <= 1) return prev;
+  const target = prev.slots.find(s => s.id === id);
+  try { if (target) localStorage.removeItem(target.storageKey); } catch { /* ignore */ }
+  const slots = prev.slots.filter(s => s.id !== id);
+  const activeId = prev.activeId === id ? slots[0].id : prev.activeId;
+  return { activeId, slots };
+}
+
+function withRenamed(prev: PackagesStore, id: string, name: string): PackagesStore {
+  return { ...prev, slots: prev.slots.map(s => s.id === id ? { ...s, name } : s) };
+}
+
+function withDuplicate(prev: PackagesStore, id: string): PackagesStore {
+  const source = prev.slots.find(s => s.id === id);
+  if (!source) return prev;
+  const newSlot = makeSlot(`${source.name} copy`);
+  try {
+    const data = localStorage.getItem(source.storageKey);
+    if (data) localStorage.setItem(newSlot.storageKey, data);
+  } catch { /* ignore */ }
+  return { activeId: newSlot.id, slots: [...prev.slots, newSlot] };
+}
+
 export function usePackages() {
   const [store, setStore] = useState<PackagesStore>(loadStore);
 
   const activeSlot = store.slots.find(s => s.id === store.activeId) ?? store.slots[0];
 
+  // Apply a change and save it; a change that returns the same store is a no-op.
+  const update = useCallback((change: (prev: PackagesStore) => PackagesStore) => {
+    setStore(prev => {
+      const next = change(prev);
+      if (next !== prev) saveStore(next);
+      return next;
+    });
+  }, []);
+
   // useWorkspace saves directly to each slot's storageKey on every change,
   // so switching just needs to update activeId — no snapshot/copy required.
-  const switchTo = useCallback((id: string) => {
-    setStore(prev => {
-      if (prev.activeId === id) return prev;
-      const next = { ...prev, activeId: id };
-      saveStore(next);
-      return next;
-    });
-  }, []);
-
-  const createNew = useCallback(() => {
-    setStore(prev => {
-      const slot = makeSlot(`Package ${prev.slots.length + 1}`);
-      // New slot has no data in localStorage — useWorkspace will start fresh
-      const next = { activeId: slot.id, slots: [...prev.slots, slot] };
-      saveStore(next);
-      return next;
-    });
-  }, []);
-
-  const remove = useCallback((id: string) => {
-    setStore(prev => {
-      if (prev.slots.length <= 1) return prev;
-      const target = prev.slots.find(s => s.id === id);
-      try { if (target) localStorage.removeItem(target.storageKey); } catch { /* ignore */ }
-      const slots = prev.slots.filter(s => s.id !== id);
-      const activeId = prev.activeId === id ? slots[0].id : prev.activeId;
-      const next = { activeId, slots };
-      saveStore(next);
-      return next;
-    });
-  }, []);
-
-  const rename = useCallback((id: string, name: string) => {
-    setStore(prev => {
-      const slots = prev.slots.map(s => s.id === id ? { ...s, name } : s);
-      const next = { ...prev, slots };
-      saveStore(next);
-      return next;
-    });
-  }, []);
-
-  const duplicate = useCallback((id: string) => {
-    setStore(prev => {
-      const source = prev.slots.find(s => s.id === id);
-      if (!source) return prev;
-      const newSlot = makeSlot(`${source.name} copy`);
-      try {
-        const data = localStorage.getItem(source.storageKey);
-        if (data) localStorage.setItem(newSlot.storageKey, data);
-      } catch { /* ignore */ }
-      const next = { activeId: newSlot.id, slots: [...prev.slots, newSlot] };
-      saveStore(next);
-      return next;
-    });
-  }, []);
+  const switchTo = useCallback((id: string) => update(prev => withActive(prev, id)), [update]);
+  const createNew = useCallback(() => update(withNewSlot), [update]);
+  const remove = useCallback((id: string) => update(prev => withoutSlot(prev, id)), [update]);
+  const rename = useCallback((id: string, name: string) => update(prev => withRenamed(prev, id, name)), [update]);
+  const duplicate = useCallback((id: string) => update(prev => withDuplicate(prev, id)), [update]);
 
   return { slots: store.slots, activeId: store.activeId, activeSlot, switchTo, createNew, remove, rename, duplicate };
 }
