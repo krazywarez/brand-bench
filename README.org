@@ -1,5 +1,7 @@
 #+title: brand bench
 
+support this project through [[https://github.com/sponsors/ccleberg][github sponsors]].
+
 * what
 client-side brand identity generator. describe a project, get a
 brand package: positioning, tone, color palette, typography, logo
